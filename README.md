@@ -1,14 +1,14 @@
 # One-Liner Manager (OLM)
 
-**OLM** is a command-line tool designed for managing credentials, IPs, domains, and executable one-liners in an ethical hacking workflow. It provides an intuitive way to store, retrieve, and execute commands based on stored credentials and targets. This tool shines when there are too many credentials and/or when commands need to be continuesly retyped with slightly different information. Olm can step in, and not just ease, but even semi-automate the process.https://github.com/PieterEdoardo/One-liner_manager/blob/main/README.md
+**OLM** is a command-line tool designed for managing credentials, IPs, domains, and executable one-liners in an ethical hacking workflow. It provides an intuitive way to store, retrieve, and execute commands based on stored credentials and targets. This tool shines when there are too many credentials and/or when commands need to be continuesly retyped with slightly different information. Olm can step in, and not just ease, but even semi-automate the process.
 
 
 ## Installation
 
 Clone the repository and navigate to the directory:
 
-    git clone <your-repo-url>
-    cd olm
+    git clone https://github.com/PieterEdoardo/One-liner_manager.git
+    cd One-liner_manager
 
 Ensure you have Python 3 installed, then run:
 
@@ -25,7 +25,7 @@ Run olm --help for an overview of commands.
 
 Add Credentials:
 
-    olm add <username> [password]
+    olm add <username> <password>
 
 Stores a new username and optional password.
 
@@ -51,14 +51,14 @@ Exports $username and $password variables for the selected index.
 
 Add/List IPs:
 
-    olm ip [IP_ADDRESS]
+    olm ip <IP_ADDRESS>
 
 Without arguments, lists stored IPs.
 With an IP address, adds it to the list.
 
 Add/List Domains:
 
-    olm dn [DOMAIN_NAME]
+    olm dn <DOMAIN_NAME>
 
 Without arguments, lists stored domains.
 With a domain name, adds it to the list.
@@ -118,10 +118,9 @@ olm add admin hunter2
 olm ip 192.168.1.100
 olm sel 0
 olm sip 0
-olm ol "ssh $username@$IP"
-olm ex 0
+olm ol "impacket-secretsdump ./$username:$password@$IP"
+olm ex 0 # Executes "impacket-secretsdump ./admin:hunter2@192.168.1.100"
 ```
-olm ex 0  # Executes "ssh admin@192.168.1.100"
 
 ## Notes
 
