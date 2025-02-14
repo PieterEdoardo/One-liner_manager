@@ -1,6 +1,6 @@
 # One-Liner Manager (OLM)
 
-**OLM** is a command-line tool designed for managing credentials, IPs, domains, and executable one-liners in an ethical hacking workflow. It provides an intuitive way to store, retrieve, and execute commands based on stored credentials and targets. This tool shines when there are too many credentials and/or when commands need to be continuesly retyped with slightly different information. Olm can step in, and not just ease, but even semi-automate the process.
+**OLM** is a command-line tool designed for managing credentials, IPs, domains, and executable one-liners in an ethical hacking workflow. It provides an intuitive way to store, retrieve, and execute commands based on stored credentials and targets. This tool shines when there are too many credentials and/or when commands need to be continuesly retyped with slightly different information. Olm can step in, and not just ease, but even semi-automate the process.https://github.com/PieterEdoardo/One-liner_manager/blob/main/README.md
 
 
 ## Installation
@@ -110,3 +110,19 @@ Execute a One-Liner (With Substitutions):
     olm ex <index>
 
 Runs the stored command, replacing $username, $password, and $IP with the selected credentials and target.
+
+## Example Usage
+
+```bash
+olm add admin hunter2
+olm ip 192.168.1.100
+olm sel 0
+olm sip 0
+olm ol "ssh $username@$IP"
+```
+olm ex 0  # Executes "ssh admin@192.168.1.100"
+
+## Notes
+
+Use `eval $(olm sel <index>)` for persistent environment variable export in Bash.
+The tool is designed for Linux-based environments; Windows support is not included.
