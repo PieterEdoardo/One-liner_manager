@@ -119,6 +119,7 @@ olm ip 192.168.1.100
 olm sel 0
 olm sip 0
 olm ol "ssh $username@$IP"
+olm ex 0
 ```
 olm ex 0  # Executes "ssh admin@192.168.1.100"
 
