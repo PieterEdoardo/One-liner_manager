@@ -142,14 +142,14 @@ def main():
         spray_attack()
 
     # Hash Management
-    elif command == "h":
+    elif command == "ha":
         if len(args) == 2:
             add_entry(FILES["hashes"], args[1])
         else:
             list_entries(FILES["hashes"])
-    elif command == "sh":
+    elif command == "sha":
         select_entry(FILES["hashes"], "hash")
-    elif command == "rmh":
+    elif command == "rmha":
         remove_entry(FILES["hashes"], int(args[1]))
 
 if __name__ == "__main__":
