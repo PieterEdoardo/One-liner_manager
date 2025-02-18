@@ -1,196 +1,156 @@
+#!/usr/bin/env python3
 import sys
 import os
-import argparse
 
-USERNAMES_FILE = 'usernames.txt'
-PASSWORDS_FILE = 'passwords.txt'
-IPS_FILE = 'ips.txt'
-DOMAINS_FILE = 'domains.txt'
-ONELINERS_FILE = 'oneliners.txt'
+# Define storage paths
+DATA_DIR = os.path.expanduser("~")
+FILES = {
+    "credentials": os.path.join(DATA_DIR, "credentials.txt"),
+    "ips": os.path.join(DATA_DIR, "ips.txt"),
+    "domains": os.path.join(DATA_DIR, "domains.txt"),
+    "oneliners": os.path.join(DATA_DIR, "oneliners.txt"),
+    "hashes": os.path.join(DATA_DIR, "hashes.txt")
+}
 
+# Ensure data directory exists
+os.makedirs(DATA_DIR, exist_ok=True)
 
-def read_file(file):
-    """Reads a file and returns a list of stripped lines."""
-    return open(file).read().splitlines() if os.path.exists(file) else []
+# Helper functions for file operations
+def read_file(filepath):
+    if os.path.exists(filepath):
+        with open(filepath, "r") as f:
+            return [line.strip() for line in f.readlines()]
+    return []
 
-
-def write_file(file, lines):
-    """Writes a list of lines to a file."""
-    with open(file, 'w') as f:
-        f.write('\n'.join(lines) + '\n')
-
+def write_file(filepath, data):
+    with open(filepath, "w") as f:
+        f.write("\n".join(data) + "\n")
 
 def add_entry(file, entry):
-    """Adds an entry to a file."""
-    with open(file, 'a') as f:
-        f.write(entry + '\n')
+    data = read_file(file)
+    data.append(entry)
+    write_file(file, data)
 
+def remove_entry(file, index):
+    data = read_file(file)
+    if 0 <= index < len(data):
+        del data[index]
+        write_file(file, data)
 
-def list_entries(file, label):
-    """Lists entries from a file with an index."""
+def list_entries(file):
     entries = read_file(file)
-    if entries:
-        for i, entry in enumerate(entries):
-            print(f'{i}: {entry}')
-    else:
-        print(f"No {label} found.")
+    for i, entry in enumerate(entries):
+        print(f"[{i}] {entry}")
 
+def select_entry(file, var_name):
+    """Prints an export command for shell integration"""
+    data = read_file(file)
+    try:
+        index = int(sys.argv[2])
+        if 0 <= index < len(data):
+            print(f"export {var_name}='{data[index]}'")
+    except (IndexError, ValueError):
+        print("Invalid index")
 
-def remove_by_index(file, index, label):
-    """Removes an entry from a file by index."""
-    entries = read_file(file)
-    if 0 <= index < len(entries):
-        del entries[index]
-        write_file(file, entries)
-        print(f"Removed {label} at index {index}.")
-    else:
-        print(f"Invalid index. No {label} removed.")
-
-
-def select_by_index(file, index, env_var):
-    """Selects an entry by index and prints an export command."""
-    entries = read_file(file)
-    if 0 <= index < len(entries):
-        print(f"export {env_var}='{entries[index]}'")
-    else:
-        print(f"Invalid index. No {env_var.lower()} selected.")
-
-
-def execute_one_liner(index, confirm):
-    """Executes a stored one-liner, replacing variables with selected values."""
-    one_liners = read_file(ONELINERS_FILE)
-    usernames = read_file(USERNAMES_FILE)
-    passwords = read_file(PASSWORDS_FILE)
-    ips = read_file(IPS_FILE)
-    domains = read_file(DOMAINS_FILE)
-
+def execute_one_liner(index, confirm=True):
+    """Executes a one-liner, replacing variables with stored values"""
+    one_liners = read_file(FILES["oneliners"])
     if 0 <= index < len(one_liners):
-        cmd = one_liners[index]
-        env_vars = {
-            "$username": os.getenv("username", usernames[0] if usernames else ""),
-            "$password": os.getenv("password", passwords[0] if passwords else ""),
-            "$IP": os.getenv("IP", ips[0] if ips else ""),
-            "$DOMAIN": os.getenv("DOMAIN", domains[0] if domains else "")
-        }
-
-        for var, value in env_vars.items():
-            cmd = cmd.replace(var, value)
-
+        command = one_liners[index]
+        for var in ["username", "password", "IP", "DOMAIN", "hash"]:
+            command = command.replace(f"${var}", os.getenv(var, f"<{var}>"))
         if confirm:
-            os.system(cmd)
-        else:
-            print(f"Executing: {cmd}")
-            if input("Proceed? (y/n): ").lower() == 'y':
-                os.system(cmd)
-    else:
-        print("Invalid one-liner index.")
+            confirm_exec = input(f"Execute: {command}? (y/n): ").strip().lower()
+            if confirm_exec != "y":
+                print("Execution cancelled.")
+                return
+        os.system(command)
 
-
-def spray_attack(confirm):
-    """Loops through all usernames and tries each username with all passwords before moving to the next username."""
-    usernames = read_file(USERNAMES_FILE)
-    passwords = read_file(PASSWORDS_FILE)
-    ips = read_file(IPS_FILE)
-    domains = read_file(DOMAINS_FILE)
-
-    one_liners = read_file(ONELINERS_FILE)
+def spray_attack():
+    """Loops through usernames and tries all passwords before moving to the next username"""
+    credentials = read_file(FILES["credentials"])
     
-    if not usernames or not passwords or not one_liners:
-        print("Missing usernames, passwords, or one-liners.")
+    if not credentials:
+        print("No credentials stored.")
         return
 
-    for username in usernames:
-        for password in passwords:
-            for cmd in one_liners:
-                env_vars = {
-                    "$username": username,
-                    "$password": password,
-                    "$IP": os.getenv("IP", ips[0] if ips else ""),
-                    "$DOMAIN": os.getenv("DOMAIN", domains[0] if domains else "")
-                }
-
-                for var, value in env_vars.items():
-                    cmd = cmd.replace(var, value)
-
-                if confirm:
-                    os.system(cmd)
-                else:
-                    print(f"Executing: {cmd}")
-                    if input("Proceed? (y/n): ").lower() == 'y':
-                        os.system(cmd)
-
+    for cred in credentials:
+        parts = cred.split(":")
+        if len(parts) != 2:
+            continue
+        user, pwd = parts
+        for password in read_file(FILES["credentials"]):
+            os.environ["username"], os.environ["password"] = user, pwd
+            os.system("olm ex 0 -y")
 
 def main():
-    parser = argparse.ArgumentParser(description="One-Liner Manager (OLM)")
-    subparsers = parser.add_subparsers(dest='command')
+    args = sys.argv[1:]
+
+    if len(args) < 1:
+        print("Usage: olm <command> [options]")
+        return
+
+    command = args[0]
 
     # Credentials Management
-    cr_parser = subparsers.add_parser('cr', help="Add or list credentials.")
-    cr_parser.add_argument('username', nargs='?', help="The username to add.")
-    cr_parser.add_argument('password', nargs='?', help="The password to add.")
-
-    scr_parser = subparsers.add_parser('scr', help="Select a credential by index.")
-    scr_parser.add_argument('index', type=int, help="The index of the credential to select.")
-
-    rmcr_parser = subparsers.add_parser('rmcr', help="Remove a credential by index.")
-    rmcr_parser.add_argument('index', type=int, help="The index of the credential to remove.")
+    if command == "cr":
+        if len(args) == 3:
+            add_entry(FILES["credentials"], f"{args[1]}:{args[2]}")
+        else:
+            list_entries(FILES["credentials"])
+    elif command == "scr":
+        select_entry(FILES["credentials"], "username")
+        select_entry(FILES["credentials"], "password")
+    elif command == "rmcr":
+        remove_entry(FILES["credentials"], int(args[1]))
 
     # IP Management
-    ip_parser = subparsers.add_parser('ip', help="Add or list IP addresses.")
-    ip_parser.add_argument('ip', nargs='?', help="The IP address to add.")
-
-    sip_parser = subparsers.add_parser('sip', help="Select an IP by index.")
-    sip_parser.add_argument('index', type=int, help="The index of the IP to select.")
-
-    rmip_parser = subparsers.add_parser('rmip', help="Remove an IP by index.")
-    rmip_parser.add_argument('index', type=int, help="The index of the IP to remove.")
+    elif command == "ip":
+        if len(args) == 2:
+            add_entry(FILES["ips"], args[1])
+        else:
+            list_entries(FILES["ips"])
+    elif command == "sip":
+        select_entry(FILES["ips"], "IP")
+    elif command == "rmip":
+        remove_entry(FILES["ips"], int(args[1]))
 
     # Domain Management
-    dn_parser = subparsers.add_parser('dn', help="Add or list domains.")
-    dn_parser.add_argument('domain', nargs='?', help="The domain to add.")
-
-    sdn_parser = subparsers.add_parser('sdn', help="Select a domain by index.")
-    sdn_parser.add_argument('index', type=int, help="The index of the domain to select.")
-
-    rmdn_parser = subparsers.add_parser('rmdn', help="Remove a domain by index.")
-    rmdn_parser.add_argument('index', type=int, help="The index of the domain to remove.")
+    elif command == "dn":
+        if len(args) == 2:
+            add_entry(FILES["domains"], args[1])
+        else:
+            list_entries(FILES["domains"])
+    elif command == "sdn":
+        select_entry(FILES["domains"], "DOMAIN")
+    elif command == "rmdn":
+        remove_entry(FILES["domains"], int(args[1]))
 
     # One-Liner Management
-    ol_parser = subparsers.add_parser('ol', help="Store, list, or overwrite one-liners.")
-    ol_parser.add_argument('index_or_command', nargs='?', help="Index to overwrite or command to store.")
-    ol_parser.add_argument('new_command', nargs='?', help="New command to overwrite an existing one.")
-
-    rmol_parser = subparsers.add_parser('rmol', help="Remove a one-liner by index.")
-    rmol_parser.add_argument('index', type=int, help="The index of the one-liner to remove.")
-
-    ex_parser = subparsers.add_parser('ex', help="Execute a stored one-liner.")
-    ex_parser.add_argument('index', type=int, help="The index of the one-liner to execute.")
-    ex_parser.add_argument('-y', action='store_true', help="Skip confirmation and execute immediately.")
-
-    spray_parser = subparsers.add_parser('spray', help="Perform a spraying attack (loop usernames through all passwords).")
-    spray_parser.add_argument('-y', action='store_true', help="Skip confirmation and execute immediately.")
-
-    args = parser.parse_args()
-
-    if args.command == 'cr':
-        if args.username:
-            add_entry(USERNAMES_FILE, args.username)
-            add_entry(PASSWORDS_FILE, args.password or "")
+    elif command == "ol":
+        if len(args) == 2:
+            add_entry(FILES["oneliners"], args[1])
         else:
-            list_entries(USERNAMES_FILE, "credentials")
-    elif args.command == 'scr':
-        select_by_index(USERNAMES_FILE, args.index, 'username')
-        select_by_index(PASSWORDS_FILE, args.index, 'password')
-    elif args.command == 'rmcr':
-        remove_by_index(USERNAMES_FILE, args.index, "credential")
-        remove_by_index(PASSWORDS_FILE, args.index, "password")
-    elif args.command == 'ex':
-        execute_one_liner(args.index, args.y)
-    elif args.command == 'spray':
-        spray_attack(args.y)
-    else:
-        parser.print_help()
+            list_entries(FILES["oneliners"])
+    elif command == "rmol":
+        remove_entry(FILES["oneliners"], int(args[1]))
+    elif command == "ex":
+        execute_one_liner(int(args[1]), confirm="-y" not in args)
 
+    # Spraying Function
+    elif command == "spray":
+        spray_attack()
 
-if __name__ == '__main__':
+    # Hash Management
+    elif command == "h":
+        if len(args) == 2:
+            add_entry(FILES["hashes"], args[1])
+        else:
+            list_entries(FILES["hashes"])
+    elif command == "sh":
+        select_entry(FILES["hashes"], "hash")
+    elif command == "rmh":
+        remove_entry(FILES["hashes"], int(args[1]))
+
+if __name__ == "__main__":
     main()
